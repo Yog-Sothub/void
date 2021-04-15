@@ -1,0 +1,68 @@
+﻿void installation:
+
+check if efi
+ls /sys/firmware/efi/
+
+UEFI GPT format
+Mount linux root partition:/ before efi: /boot/efi
+
+getting wifi to work:
+wpa_passphrase 'Bredband2-33EF' 'lösen' >> /etc/wpa_supplicant/wpa_supplicant-wlp3s0.conf
+sudo ln -s /etc/sv/wpa_supplicant /var/service/
+
+update packages:
+sudo xbps-install -Su
+install gnome:
+sudo xbps-install -Sy gnome dbus elogind polkit NetworkManager nano gnome-terminal
+
+sudo xbps-install -Sy xorg 
+
+comment out EnableWayland=false
+in /etc/gdm/custom.conf
+
+sudo rm /var/service/dhcpcd_wlp3s0
+sudo rm /var/service/dhcpcd
+sudo rm /var/service/wpa_supplicant
+
+sudo ln -s /etc/sv/{gdm,dbus,polkitd,NetworkManager} 
+/var/service/
+
+sudo ls /var/service (runit program)
+
+sudo ls /etc/sv
+lista på allt som kan köras i runit
+
+Efter installation
+installera non-free repo
+xbps-install -S void-repo-nonfree
+
+installera intel microcode
+sudo xbps-install intel-ucode
+
+Reconfigure the kernel package to rebuild the initramfs, so it can load the new microcode. (This only has to be done for installed kernel packages) 
+
+xbps-reconfigure -f linuxXX.XX (kärnans version tex 5.4)
+
+Ta reda på vilken microcode som används
+sudo dmesg | grep microcode
+
+Disable gnome-initial-setup
+mkdir /home/yog/.config
+echo "yes" >> /home/yog/.config/gnome-initial-setup-done
+
+Backlight:
+sudo vim /etc/rc.local
+echo 1591 > /sys/class/backlight/intel_backlight/brightness
+
+to check value for current backlight:
+cat /sys/class/backlight/intel_backlight/brightness
+
+Bluetooth:
+sudo xbps-install -S bluez
+sudo ln -s /etc/sv/bluetoothd /var/service/
+add user to bluetooth group:
+sudo usermod -a -G bluetooth användare
+
+sudo vim /etc/bluetooth/main.conf
+set "ControllerMode = bredr"
+restart comp! (or bluetoothd)

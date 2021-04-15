@@ -1,0 +1,257 @@
+﻿void installation:
+
+check if efi
+ls /sys/firmware/efi/
+
+UEFI GPT format
+Mount linux root partition:/ before efi: /boot/efi
+
+Finding wifi devices:
+ifconfig
+
+getting wifi to work:
+$ cp /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant-
+<device>.conf
+
+$ wpa_passphrase ”ssid” ”password” | sudo tee -a
+/etc/wpa_supplicant/wpa_supplicant-wlp3s0.conf
+
+sudo ln -s /etc/sv/wpa_supplicant /var/service/
+sudo sv restart dhcpcd
+
+update packages:
+sudo xbps-install -Su
+
+#### Installera xorg display ####
+sudo xbps-install -S xorg xdg-desktop-portal xdg-user-dirs xdg-utils xdg-desktop-portal-gtk
+
+#### lista på allt som kan köras i runit:
+ls /etc/sv
+
+sudo xbps-install -S dbus elogind polkit NetworkManager vim udisk2 gvfs
+
+Efter installation
+installera non-free repo
+xbps-install -S void-repo-nonfree
+
+installera intel microcode
+sudo xbps-install intel-ucode
+
+Reconfigure the kernel package to rebuild the initramfs, so it can load the new microcode. (This only has to be done for installed kernel packages) 
+
+installera amd microcode:
+xbps-install -S linux-firmware-amd
+
+xbps-reconfigure -f linuxXX.XX (kärnans version tex 5.4)
+
+Ta reda på kernel version:
+uname -r
+
+Ta reda på vilken microcode som används
+sudo dmesg | grep microcode
+
+#### GPU Drivers Intel
+sudo xbps-install -S linux-firmware-intel 
+#OpenGL# mesa-dri 
+#Vulkan# vulkan-loader mesa-vulkan-intel
+#VAAPI# libva-intel-driver
+
+#### Gpu drivers AMD
+sudo xbps-install -S 
+#OpenGL# mesa-dri
+#Vulkan# vulkan-loader mesa-vulkan-radeon (och/eller) amdvlk
+#VAAPI# mesa-vaapi mesa-vdpau
+
+#### WIFI drivers BCM4321
+sudo xbps-install -S git xbps-src
+
+git clone https://github.com/void-linux/void-packages
+cd void-packages
+./xbps-src binary-bootstrap
+echo XBPS_ALLOW_RESTRICTED=yes >> etc/conf
+./xbps-src pkg b43-firmware # for 6.30.163.46, b43-firmware-classic for 5.100.138
+sudo xbps-install -R hostdir/binpkgs/nonfree b43-firmware
+
+
+#### .xinitrc
+cp /etc/X11/xinit/xinitrc .xinitrc
+
+#### Edit .xinitrc
+vim .xinitrc
+Remove the last five lines
+---------.xinitrc-------------
+setxkbmap se &
+
+picom &
+
+nitrogen --restore &
+
+#### while loop ####
+while true; do
+	dwm >/dev/null 2>&1
+done
+
+exec dbus-run-session dwm
+-------------------------------
+
+#### deps för att bygga suckless program:
+sudo xbps-install -S base-devel libX11-devel libXft-devel libXinerama-devel git wget
+
+#### Installera DWM ####
+sudo xbps-install -S wget git
+wget https://dl.suckless.org/dwm/dwm-6.2.tar.gz
+tar -xzvf dwm-6.2.tar.gz
+cd dwm-6.2
+sudo make clean install
+
+#### Installera min DWM ####
+git clone https://github.com/Yog-Sothub/dwm.git
+cd dwm
+make && sudo make clean install
+
+
+#### Installera st (terminal) ####
+wget https://dl.suckless.org/st/st-0.8.3.tar.gz
+tar -xzvf st-0.8.3.tar.gz
+cd st-0.8.3
+sudo make clean install
+
+#### Installera min ST ####
+git clone https://github.com/Yog-Sothub/st.git
+cd st
+make && sudo make clean install
+
+
+#### Installera dmenu ####
+wget https://dl.suckless.org/tools/dmenu-4.9.tar.gz
+tar -xzvf dmenu-4.9.tar.gz
+cd dmenu-4.9
+sudo make clean install
+
+#### Installera min dmenu ####
+git clone https://github.com/Yog-Sothub/dmenu.git
+cd dmenu
+make && sudo make clean install
+
+#### Klona dotfiles och configs ####
+https://github.com/Yog-Sothub/void.git
+
+Mod4Mask = win key
+
+#### Seat management
+sudo rm /var/service/wpa_supplicant
+sudo rm /var/service/dhcpcd
+
+sudo ln -s /etc/sv/{dbus,polkitd,NetworkWanager} /var/service/
+
+#### xdg-dirs-dirs
+sudo xbps-install -S xdg-user-dirs 
+
+kör:
+xdg-user-dirs-update
+
+#### Thunar
+sudo xbps-install -S thunar thunar-volman
+(automount och papperskorg deps)
+sudo xbps-install -S gvfs udisks2 (kanske polkit-gnome)
+(Alternativt)
+(kör:)
+(devmon eller tillför 'devmon &' i .xinitrc)
+
+#### Ljud
+sudo xbps-install -S pulseaudio alsa-plugins-pulseaudio alsa-utils pamixer
+
+#### Internet
+sudo xbps-install -S networkmanager-dmenu
+
+
+Backlight:
+sudo vim /etc/rc.local
+echo 1591 > /sys/class/backlight/intel_backlight/brightness
+
+to check value for current backlight:
+cat /sys/class/backlight/intel_backlight/brightness
+
+### Firefox: höger klick autoväljer det översta alternativet
+about:config
+byt
+ui.context_menus.after_mouseup
+till true
+
+#### Firewall
+sudo xbps-install -S ufw
+ufw enable
+
+### Patching DWM
+Download patch .diff
+cd dwm
+patch < ~/Hämtningar/...diff
+sudo cp config.def.h config.h
+make && sudo make clean install
+
+### Un-patching DWM
+cd dwm
+patch -R < ~/Hämtningar/...diff
+sudo cp config.def.h config.h
+make && sudo make clean install
+
+
+#### Fonts ####
+-------------------------------------------------------------------
+sudo xbps-install -S freefont-ttf
+
+# Do the following to make text look sharper and to disable bitmaps.
+
+ln -s /usr/share/fontconfig/conf.avail/10-hinting-slight.conf /etc/fonts/conf.d/
+ln -s /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf /etc/fonts/conf.d/
+ln -s /usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf /etc/fonts/conf.d/
+ln -s /usr/share/fontconfig/conf.avail/50-user.conf /etc/fonts/conf.d/
+ln -s /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf /etc/fonts/conf.d/
+
+Add this to ~/.config/fontconfig/fonts.conf (you may have to create the file).
+
+--------------fonts.conf--------------------------
+<?xml version='1.0'?>
+<!DOCTYPE fontconfig SYSTEM 'fonts.dtd'>
+<fontconfig>
+	<match target="font">
+		<edit mode="assign" name="antialias">
+			<bool>true</bool>
+		</edit>
+		<edit mode="assign" name="hinting">
+			<bool>true</bool>
+		</edit>
+		<edit mode="assign" name="autohint">
+			<bool>false</bool>
+		</edit>
+		<edit mode="assign" name="hintstyle">
+			<const>hintslight</const>
+		</edit>
+		<edit mode="assign" name="rgba">
+			<const>rgb</const>
+		</edit>
+		<edit mode="assign" name="lcdfilter">
+			<const>lcddefault</const>
+		</edit>
+		<edit mode="assign" name="embeddedbitmap">
+			<bool>false</bool>
+		</edit>
+	</match>
+</fontconfig>
+----------------------------------------------------
+
+Finally, add this to ~/.Xresources (you may have to create this file).
+
+---------------------.Xresources--------------------
+Xft.antialias:	1
+Xft.hinting:	1
+Xft.autohint:	0
+Xft.hintstyle:	hintslight
+Xft.rgba:	rgb
+Xft.lcdfilter:	lcddefault
+-----------------------------------------------------
+
+
+ 
+
+

@@ -7,7 +7,7 @@ UEFI GPT format
 Mount linux root partition:/ before efi: /boot/efi
 
 getting wifi to work:
-wpa_passphrase 'Bredband2-33EF' 'lösen' >> /etc/wpa_supplicant/wpa_supplicant-wlp3s0.conf
+wpa_passphrase 'ssid' 'lösen' >> /etc/wpa_supplicant/wpa_supplicant-wlp3s0.conf
 sudo ln -s /etc/sv/wpa_supplicant /var/service/
 
 update packages:

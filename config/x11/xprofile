@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# This file runs when a DM logs you into a graphical session.
+# If you use startx/xinit like a Chad, this file will also be sourced.
+
+# Keyboard layout
+setxkbmap se &
+
+# dockd
+dockd --daemon &
+
+# Display
+xrandr --output DP2-2 --mode 2560x1440 --right-of eDP1 &
+
+# Bluetooth
+#blueberry-tray &
+
+# Redshift
+redshift &
+
+# Dunst/notification
+dunst &
+
+# slstatusbar
+#slstatus &
+
+nitrogen --restore
+
+# MPD
+mpd &
+
+# Nextcloud
+nextcloud &
+
+# Compositor
+picom &
+
+# Dwmblocks
+dwmblocks &

@@ -1,0 +1,261 @@
+wifi:
+# iwctl
+# station wlp3s0 connect Bredband2-33EF
+# skriv in lösen
+# exit
+
+Hitta och ställ in tangentbord:
+localectl list-keymaps
+loadkeys sv-latin1 (tex)
+
+Ställ in tty font:
+setfont ter-132n
+
+Hitta närmaste mirrors
+# reflector -c Sweden -a 6 --protocol http --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+
+# pacman syy
+
+Synkronisera network time protocol
+timedatectl set-ntp true
+
+Partition drives:
+lsblk (för att hitta diskar)
+
+gdisk /dev/sda
+
+EFI
+n (för ny)
+partition number: enter för default
+first sector accept default by pressing enter
+Last sector defines the size of the partition: +300M (för boot)
+Hex code or GUID (l to show codes) ef00 (koden för efi-boot)
+
+SWAP
+n
+enter
+Laset sector: +2G (till swap
+Hex code or GUID: 8200
+
+ROOT
+n
+Last sector: enter (resten av disken)
+Hex code or GUID: 8300 (linux files system)
+
+w (to write)
+y
+
+Formatting the partitions:
+
+EFI (boot)
+mkfs.vfat /dev/sda1 (path to drive check with lsblk)
+
+SWAP
+mkswap /dev/sda2
+swapon /dev/sda2 (activate swap)
+
+/BTRFS (root)
+mkfs.btrfs /dev/sda3
+
+MOUNTING PARTITIONS:
+
+ROOT
+mount /dev/sda3 /mnt
+
+CREATING SUBVOLS IN BTRFS
+cd /mnt
+(root@archiso /mnt)
+btrfs subvolume create @
+btrfs subvolume create @home
+btrfs subvolume create @var
+cd
+
+(root@archiso ~ #)
+MOUNTING BTRFS
+umount /mnt
+mount -o noatime,compress=zstd,space_cache,discard=async,subvol=@ /dev/sda3 /mnt
+
+CREATE DIRS FOR @HOME AND @VAR
+mkdir /mnt/{boot,home,var}
+
+mount -o noatime,compress=zstd,space_cache,discard=async,subvol=@home /dev/sda3 /mnt/home
+mount -o noatime,compress=zstd,space_cache,discard=async,subvol=@var /dev/sda3 /mnt/var
+
+MOUNT BOOT
+mount /dev/sda1 /mnt/boot
+
+
+BASE install
+pacstrap /mnt base base-devel linux-lts linux-lts-headers linux-firmware vim git intel-ucode btrfs-progs
+
+GENERATING THE FILE SYSTEM TABLE:
+genfstab -U /mnt >> /mnt/etc/fstab
+cat /mnt/etc/fstab (för att kolla mount points)
+
+NOW TO INSTALLATION:
+arch-chroot /mnt
+
+###############################################################
+#EFTER OVANSTÅENDE STEG SÅ KAN DU ANVÄNDA INSTALLERINGSCRIPTET#
+###############################################################
+
+TIMEZONE:
+timedatectl --list-timezones (för att kolla tidszon)
+ln -sf /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
+
+SYNCHRONIZE HARDWARE CLOCK AND SYSTEM CLOCK:
+hwclock --systohc
+
+LOCALE:
+vim /etc/locale.gen
+avkommentera den locale som man vill använda tex en.US.UTF-8 UTF-8
+
+GENERATE LOCALE:
+locale-gen
+
+echo "LANG=en.US.UTF-8" >> /etc/locale.conf
+
+TANGENTBORD:
+echo "KEYMAP=sv-latin1" >> /etc/vconsole.conf
+
+HOST NAME:
+echo "arch-thinkpad" >> /etc/hostname
+
+change hosts file:
+vim /etc/hosts
+-------------------------------------------------------------
+127.0.0.1	localhost
+::1		localhost
+127.0.1.1	arch-thinkpad.localdomain	arch-thinkpad
+-------------------------------------------------------------
+
+ROOT password:
+passwd
+New password: lösenord
+Retype: lösenord
+
+INSTALLERA GRUB OSV.
+pacman -S grub grub-btrfs efibootmgr networkmanager network-manager-applet dialog wpa_supplicant mtools dosfstools reflector base-devel linux-lts-headers avahi xdg-user-dirs xdg-utils gvfs nfs-utils inetutils dnsutils alsa-utils pipewire pipewire-pulse pipewire-jack bash-completion rsync acpi acpid acpi-call tlp ufw flatpak terminus-font pamixer pavucontrol xf86-video-intel mesa libva-intel-driver
+
+
+VIDEO DRIVERS:
+xf86-video-intel mesa (openGL) 
+
+VAAPI
+libva-intel-driver (för Haswell)
+intel-media-driver (Broadwell eller nyare)
+
+vp8 vp9
+intel-codec-hybrid-driver (aur)
+
+###############################################
+#EFTER SCRIPT STEG 1: REDIGERA mkinitcpio.conf#
+###############################################
+vim /etc/mkinitcpio.conf
+------------------------------
+MODULES=(i915) for intel. (amdgpu) for amd-graphics (btrfs) for btrfs over two discs
+------------------------------
+REGENERATE initramfs
+# mkinitcpio -p linux-lts (eller linux)
+
+
+INSTALLERA GRUB BOOTLOADER:
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+
+GENERERA CONFIG FÖR GRUB:
+grub-mkconfig -o /boot/grub/grub.cfg
+
+ENABLING SOME SERVICES:
+systemctl enable NetworkManager
+
+systemctl enable bluetooth
+
+systemctl enable tlp
+
+systemctl enable reflector.timer
+
+systemctl enable fstrim.timer (för ssd)
+
+SKAPA ANVÄNDARE FÖR SYSTEMET:
+useradd -mG wheel andreo
+
+passwd andreo
+lösenord
+lösenord
+
+usermod -c 'Andreo Bandreo' andreo
+
+(Userprivs:)
+EDITOR=vim visudo
+------------------------------
+uncomment %wheel ALL=(ALL) ALl
+------------------------------
+
+#####################
+#EFTER SCRIPT STEG 2#
+#####################
+RETURN TO ISO:
+exit
+
+UNMOUNT ALL THE DISKS:
+umount -a
+
+reboot
+
+POST INSTALLERING:
+
+WIFI:
+nmtui
+logga in på wifi
+
+STÄLL IN FONT:
+setfont ter-132n
+
+STÄLL IN MIRRORS:
+# reflector -c Sweden -a 6 --sort rate --save /etc/pacman.d/mirrorlist
+
+
+INSTALLERA PARU (aur helper)
+---------------------------------------------
+git clone https://aur.archlinux.org/paru.git
+cd paru
+makepkg -si
+
+-Color
+Enable color in /etc/pacman.conf
+
+-Flip search order
+Enable BottomUp in /etc/paru.conf
+
+-PKGBUILD syntax highlighting
+sudo pacman -S bat
+---------------------------------------------
+RENSA PACMAN CACHE:
+BEHÖVER PACCACHE SOM INGÅR I PACMAN-CONTRIB
+
+sudo pacman -S pacman-contrib
+
+SKAPA AUTOMATISK BORTTAGNING:
+
+sudo mkdir /etc/pacman.d/hooks
+
+sudo vim /etc/pacman.d/hooks/clean_package_cache.hook
+----------------------------------------------------
+[Trigger]
+Operation = Upgrade
+Operation = Install
+Operation = Remove
+Type = Package
+Target = *
+[Action]
+Description = Cleaning pacman cache...
+When = PostTransaction
+Exec = /usr/bin/paccache -r
+----------------------------------------------------
+
+
+
+
+
+
+

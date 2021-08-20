@@ -1,0 +1,15 @@
+#!/bin/bash
+Playing='⏯️ ' #lines
+Paused='⏸️ ' #arrow
+
+
+case $BLOCK_BUTTON in
+	1) playerctl -p ncspot play-pause ;;
+	2) playerctl -p ncspot next ;;
+	3) playerctl -p ncspot previous ;;
+esac
+
+[ $(playerctl -p ncspot status) = 'Playing' ] && echo "⏯️ $(playerctl -p ncspot metadata --format '{{(title)}} - {{(artist)}}')" && exit
+[ $(playerctl -p ncspot status) = 'Paused' ] && echo "⏸️ $(playerctl -p ncspot metadata --format '{{(title)}} - {{(artist)}}')"  && exit
+
+playerctl -p ncspot metadata --format '{{(title)}} - {{(artist)}}'
